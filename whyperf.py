@@ -5,7 +5,7 @@ import sys
 import re
 import time
 
-def server(ip, port, format):   #Starts simpleperf in server mode.
+def server(ip, port, format):   #Starts whyperf in server mode.
     #Arguments:
     # ip and port are the IP and port the user wants to use for the server.
     # format: the units the users wants the data to be displayed in
@@ -28,7 +28,7 @@ def server(ip, port, format):   #Starts simpleperf in server mode.
 
     #Prints message when server is ready to handle clients
     print("---------------------------------------------------------")
-    print("A simpleperf server is listening on " + str(ip) + ":" + str(port))
+    print("A whyperf server is listening on " + str(ip) + ":" + str(port))
     print("---------------------------------------------------------")
 
     def handle_client(client_socket, client_address, thread):   #Starts a thread for every connection
@@ -36,14 +36,14 @@ def server(ip, port, format):   #Starts simpleperf in server mode.
         #client_socket:     used to interface with the socket, including sending and receiving data
         #client_address:    used to print client IP and port.
         #thread:            thread counter used to differentiate between the different client connections when printing summary
-        print("A simpleperf client with IP " + str(client_address[0]) + ":" + str(client_address[1]) + " is connected with server " + str(ip) + ":" + str(port))
+        print("A whyperf client with IP " + str(client_address[0]) + ":" + str(client_address[1]) + " is connected with server " + str(ip) + ":" + str(port))
         clientStartTime = float(client_socket.recv(1024).decode().rstrip("\x00"))      #Receives client start time from client. The message is stripped from empty bytes.
         duration = 0            #Used to calculate the duration of the test after the test is finished
         received_bytes = 0
         done = False            #Used to exit the while loop when the test is finished
 
         while not done:         #While loop used to receive data and end the test
-            data = client_socket.recv(1000) #Receives data from client
+            data = client_socket.recv(1024) #Receives data from client
             if (data.decode() == "BYE"):    #If the data is a "BYE" message, the test has ended and the loop can be exited
                 clientEndTime = client_socket.recv(1024).decode()           #Recieves end time from client
                 duration = float(clientEndTime) - float(clientStartTime)    #Calculates total duration of the test
@@ -75,7 +75,7 @@ def server(ip, port, format):   #Starts simpleperf in server mode.
         threadNr += 1       #Increments thread counter
         time.sleep(0.1)     #Waits 0.1s before running the loop again. This gives every connection a bit of headroom to connect. This is only used to make sure that statistics are printed in the correct order when using parallel connections.
 
-def client(ip, port, format, duration, numberOfBytes, interval, connections):       #Starts simpleperf in client mode
+def client(ip, port, format, duration, numberOfBytes, interval, connections):       #Starts whyperf in client mode
     #Arguments:
     #ip, port:      IP and port the client should connect to.
     #format:        Unit data should be printed in
@@ -102,7 +102,7 @@ def client(ip, port, format, duration, numberOfBytes, interval, connections):   
 
     #Prints message when client is preparing to connect
     print("---------------------------------------------------------")
-    print("A simpleperf client is connecting to " + str(ip) + ":" + str(port))
+    print("A whyperf client is connecting to " + str(ip) + ":" + str(port))
 
     threads = []  # Array of threads
     for i in range(int(connections)):       #This code runs as many times as there are connections requested by the user (using -P flag)
@@ -135,7 +135,7 @@ def client_connection(ip, port, testDuration, durationType, interval, connection
     bytesSent = 0                   #Tracks number of bytes sent
     currentInterval = 0             #Used to print start time of the current interval
     bytesSentThisInterval = 0       #Tracks number of bytes sent this interval
-    data = bytes(1000)              #Creates data with size of 1000 bytes
+    data = bytes(1024)              #Creates data with size of 1024 bytes
     #All variables that are not time-critical are defined before this comment. This is done to
     #reduce the impact setup has on the actual test duration.
     start_time = time.time()
@@ -144,8 +144,8 @@ def client_connection(ip, port, testDuration, durationType, interval, connection
     if (durationType == "time"):
         while (start_time + testDuration >= time.time()):   #Run test while starttime + duration > current time
             client_socket.send(data)                        #Sends a lot of data in the while loop
-            bytesSent += 1000                               #Adds datalength to bytesSent
-            bytesSentThisInterval += 1000
+            bytesSent += 1024                               #Adds datalength to bytesSent
+            bytesSentThisInterval += 1024
             # If intervalStartTime in seconds + interval seconds <= current time, the code prints statistics and resets the interval
             if (intervalStartTime + interval <= time.time()):
                 printInterval(ip, port, currentInterval, interval, bytesSentThisInterval, format, connectionNo)
@@ -158,8 +158,8 @@ def client_connection(ip, port, testDuration, durationType, interval, connection
     elif (durationType == "bytes"):
         while (bytesSent < testDuration):                   #Run test while bytes sent < test duration (number of bytes to send)
             client_socket.send(data)                        #Sends a lot of data in the while loop
-            bytesSent += 1000                               #Adds datalength to bytesSent
-            bytesSentThisInterval += 1000
+            bytesSent += 1024                               #Adds datalength to bytesSent
+            bytesSentThisInterval += 1024
             # If intervalStartTime in seconds + interval seconds <= current time, the code prints statistics and resets the interval
             if (intervalStartTime + interval <= time.time()):
                 printInterval(ip, port, currentInterval, interval, bytesSentThisInterval, format, connectionNo)
@@ -211,11 +211,11 @@ def printInterval(ip, port, currentInterval, interval, bytesSentThisInterval, fo
     decimal = 0         #How many decimals should be printed in bytes column
     bit = "b"           #Used for formatting Xbps column (bps, Kbps, Mbps)
     if (format == "KB"):
-        bytesSentThisInterval /= 1000       #Converts bytes to KB
+        bytesSentThisInterval /= 1024       #Converts bytes to KB
         decimal = 2                         #Use 2 decimals
         bit = "Kb"                          #Format bps as Kbps
     elif (format == "MB"):
-        bytesSentThisInterval /=  1_000_000 #Converts bytes to MB
+        bytesSentThisInterval /=  1_024_000 #Converts bytes to MB
         decimal = 2                         #Use 2 decimals
         bit = "Mb"                          #Format bps as Mbps
 
@@ -241,11 +241,11 @@ def printSummary(ip, port, duration, bytesSent, format, connectionNo, intervalDe
     decimal = 0         #How many decimals should be printed in bytes column
     bit = "b"           #Used for formatting Xbps column (bps, Kbps, Mbps)
     if (format == "KB"):
-        bytesSent /= 1000                   #Converts bytes to KB
+        bytesSent /= 1024                   #Converts bytes to KB
         decimal = 2                         #Use 2 decimals
         bit = "Kb"                          #Format bps as Kbps
     elif (format == "MB"):
-        bytesSent /= 1_000_000              #Converts bytes to MB
+        bytesSent /= 1_024_000              #Converts bytes to MB
         decimal = 2                         #Use 2 decimals
         bit = "Mb"                          #Format bps as Mbps
 
@@ -309,9 +309,9 @@ def checkNum(val): #Checks input of -n num flag
     if (numOK):
         items = numCheck.groups()               #Creates an array with the number and string provided by user
         if (items[1] == "kb"):
-            return int(items[0]) * 1000         #Returns the number converted to KB
+            return int(items[0]) * 1024         #Returns the number converted to KB
         elif (items[1] == "mb"):
-            return int(items[0]) * 1_000_000    #Returns the number converted to MB
+            return int(items[0]) * 1_024_000    #Returns the number converted to MB
         elif (items[1] == "b"):
             return items[0]                     #Returns the number with no conversion as its already in bytes
     raise Exception("Could not interpret your input " + str(val) + ". Enter number of bytes ending with either B, KB or MB")        #If no return statement is run, the user must have provided an invalid value
@@ -334,24 +334,24 @@ sys.tracebacklimit = 0  # Used to throw exceptions without traceback.
 parser = argparse.ArgumentParser(description="positional arguments", epilog="end of help")      #Initialises argsparse parser
 
 # Arguments
-parser.add_argument('-s', '--server', action='store_true', default=False, help="Start in server mode. Default.")
+parser.add_argument('-s', '--server', action='store_true', default=False, help="Start in server mode. Default")
 parser.add_argument('-c', '--client', action='store_true', default=False, help="Start in client mode")
 parser.add_argument('-b', '--bind', type=checkIP, default="127.0.0.1",
                     help="Bind to provided IPv4 address. Default 127.0.0.1")
 parser.add_argument('-p', '--port', type=checkPort, default="8088", help="Bind to provided port. Default 8088")
 parser.add_argument('-f', '--format', type=checkFormat, default="MB",
-                    help="Specify output format. Supported: B, KB, MB. Default MB.")
+                    help="Specify output format. Supported: B, KB, MB. Default MB")
 parser.add_argument('-I', '--serverip', type=checkIP, default="127.0.0.1")
-parser.add_argument('-t', '--time', type=checkTime, default="NA", help="Duration of test in seconds:")
+parser.add_argument('-t', '--time', type=checkTime, default="NA", help="Duration of test in seconds")
 parser.add_argument('-n', '--num', type=checkNum, default="NA",
                     help="Number of bytes to transfer. Must end with B, KB or MB")
 parser.add_argument('-i', '--interval', type=checkInterval, default="5",
-                    help="Update frequency for statistics in seconds.")
+                    help="Update frequency for statistics in seconds")
 parser.add_argument('-P', '--parallel', type=checkParallel, default="1", help="Create parallel connections to server")
 args = parser.parse_args()        #Parses arguments provided by user
 
 if (args.server and args.client):
-    #An instance of simpleperf can't run both server and client at the same time
+    #An instance of whyperf can't run both server and client at the same time
     raise Exception("Can't run server and client in the same instance")
 elif (args.server and not args.client):
     #If only -s is provided, run in server mode
